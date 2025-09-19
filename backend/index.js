@@ -1,58 +1,78 @@
-import express from "express";
-import mongoose from "mongoose";
-import bodyParser from "body-parser";
-import jwt from "jsonwebtoken";
-import cors from "cors";
-import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
-import userRouter from "./routers/userRouter.js";
+import express from "express"
+import mongoose from "mongoose"
+import bodyParser from "body-parser"
+import userRouter from "./Routers/userRouter.js"
+import instructorRouter from "./routers/instructorRouter.js"
+import courseRouter from "./routers/courseRouter.js"
+import studentRouter from "./routers/studentRouter.js"
+import enrollmentRouter from "./routers/enrollmentRouter.js"
 
-dotenv.config();
+import jwt, { decode } from "jsonwebtoken";
+import dotenv from "dotenv"
+dotenv.config()
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
-const app = express();
+const app = express()
 
-// Enable CORS
-app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:3000'],
-    credentials: true
-}));
 
-app.use(bodyParser.json());
+app.use(bodyParser.json())
 
-// JWT Auth middleware
-app.use((req, res, next) => {
-    const value = req.header("Authorization");
-    if (value != null) {
-        const token = value.replace("Bearer ", "");
-        jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-            if (decoded == null) {
-                res.status(403).json({ message: "invalid user" });
-            } else {
-                req.user = decoded;
-                next();
+app.use(
+    (req,res,next)=>{
+
+        const value = req.header("Authorization")
+        if(value != null){
+        const token = value.replace("Bearer ","")
+         jwt.verify(token,
+            process.env.JWT_SECRET,
+            (err,decoded) =>{
+
+                if(decoded == null){
+                    res.status(403).json({
+                    message : "invalid user"
+                })
+                }else{
+                    req.user = decoded
+                    next()
+                }
             }
-        });
-    } else {
-        next();
+
+         )
+        }else{
+        next()//pass the relared one
+        }
     }
-});
+)
 
-// Serve static files
-app.use('/uploads', express.static('uploads'));
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log("Connected to database"))
-    .catch(() => console.log("Failed to connect to the database"));
+const connectionString = process.env.MONGO_URI
 
-// Routes
 
-app.use("/api/users", userRouter);
-;
+mongoose.connect(connectionString).then(
+    ()=>{
+        console.log("Connected to database")
+    }
+).catch(
+    ()=>{
+        console.log("Failed to connect to the database")
+    }
+)
 
-// Start server
-app.listen(5000, () => console.log("Server started on port 5000"));
+
+
+
+app.use("/api/users", userRouter)
+app.use("/api/instructors", instructorRouter)
+app.use("/api/courses", courseRouter)
+app.use("/api/students", studentRouter)
+app.use("/api/enrollments", enrollmentRouter)
+
+
+
+
+
+app.listen(5000, 
+   ()=>{
+       console.log("server started")
+   }
+)
