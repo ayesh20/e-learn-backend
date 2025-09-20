@@ -1,6 +1,7 @@
 import express from "express"
 import mongoose from "mongoose"
 import bodyParser from "body-parser"
+import cors from "cors";
 import userRouter from "./Routers/userRouter.js"
 import instructorRouter from "./routers/instructorRouter.js"
 import courseRouter from "./routers/courseRouter.js"
@@ -13,7 +14,10 @@ dotenv.config()
 
 
 const app = express()
-
+app.use(cors({
+    origin: ['http://localhost:5173', 'http://localhost:5000'],
+    credentials: true
+}));
 
 app.use(bodyParser.json())
 
@@ -53,8 +57,8 @@ mongoose.connect(connectionString).then(
         console.log("Connected to database")
     }
 ).catch(
-    ()=>{
-        console.log("Failed to connect to the database")
+    (error)=>{
+        console.log("Failed to connect to the database:", error.message)
     }
 )
 
