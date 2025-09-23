@@ -7,6 +7,7 @@ import instructorRouter from "./routers/instructorRouter.js"
 import courseRouter from "./routers/courseRouter.js"
 import studentRouter from "./routers/studentRouter.js"
 import enrollmentRouter from "./routers/enrollmentRouter.js"
+import profileRouter from"./routers/profileRouter.js"
 
 import jwt, { decode } from "jsonwebtoken";
 import dotenv from "dotenv"
@@ -70,6 +71,7 @@ app.use("/api/instructors", instructorRouter)
 app.use("/api/courses", courseRouter)
 app.use("/api/students", studentRouter)
 app.use("/api/enrollments", enrollmentRouter)
+app.use('/api/profile', profileRouter);
 
 
 
