@@ -36,7 +36,13 @@ export async function createCourse(req, res) {
             maxStudents: req.body.maxStudents || 50,
             syllabus: req.body.syllabus || [],
             requirements: req.body.requirements || [],
-            tags: req.body.tags || []
+            tags: req.body.tags || [],
+            thumbnail: req.body.thumbnail || null,
+            // Enhanced fields for content and quizzes
+            content: req.body.content || [],
+            quizzes: req.body.quizzes || [],
+            resources: req.body.resources || [],
+            assignments: req.body.assignments || []
         };
 
         // Create course
@@ -317,6 +323,111 @@ export async function getFeaturedCourses(req, res) {
         console.error('Error fetching featured courses:', error);
         res.status(500).json({
             message: "Failed to fetch featured courses",
+            error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+}
+
+// NEW: Add course content
+export async function addCourseContent(req, res) {
+    try {
+        const courseId = req.params.courseId;
+        const { content } = req.body;
+        
+        const course = await Course.findById(courseId);
+        if (!course) {
+            return res.status(404).json({ message: "Course not found" });
+        }
+        
+        course.content = course.content || [];
+        course.content.push(content);
+        course.updatedAt = new Date();
+        
+        await course.save();
+        
+        res.json({
+            message: "Content added successfully",
+            course
+        });
+    } catch (error) {
+        console.error('Error adding course content:', error);
+        res.status(500).json({
+            message: "Failed to add content",
+            error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+}
+
+// NEW: Add course quiz
+export async function addCourseQuiz(req, res) {
+    try {
+        const courseId = req.params.courseId;
+        const { quiz } = req.body;
+        
+        const course = await Course.findById(courseId);
+        if (!course) {
+            return res.status(404).json({ message: "Course not found" });
+        }
+        
+        course.quizzes = course.quizzes || [];
+        course.quizzes.push(quiz);
+        course.updatedAt = new Date();
+        
+        await course.save();
+        
+        res.json({
+            message: "Quiz added successfully",
+            course
+        });
+    } catch (error) {
+        console.error('Error adding course quiz:', error);
+        res.status(500).json({
+            message: "Failed to add quiz",
+            error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+}
+
+// NEW: Get course content
+export async function getCourseContent(req, res) {
+    try {
+        const courseId = req.params.courseId;
+        
+        const course = await Course.findById(courseId).select('content syllabus');
+        if (!course) {
+            return res.status(404).json({ message: "Course not found" });
+        }
+        
+        res.json({
+            content: course.content || [],
+            syllabus: course.syllabus || []
+        });
+    } catch (error) {
+        console.error('Error fetching course content:', error);
+        res.status(500).json({
+            message: "Failed to fetch content",
+            error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        });
+    }
+}
+
+// NEW: Get course quizzes
+export async function getCourseQuizzes(req, res) {
+    try {
+        const courseId = req.params.courseId;
+        
+        const course = await Course.findById(courseId).select('quizzes');
+        if (!course) {
+            return res.status(404).json({ message: "Course not found" });
+        }
+        
+        res.json({
+            quizzes: course.quizzes || []
+        });
+    } catch (error) {
+        console.error('Error fetching course quizzes:', error);
+        res.status(500).json({
+            message: "Failed to fetch quizzes",
             error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
         });
     }

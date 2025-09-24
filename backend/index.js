@@ -8,9 +8,14 @@ import courseRouter from "./routers/courseRouter.js"
 import studentRouter from "./routers/studentRouter.js"
 import enrollmentRouter from "./routers/enrollmentRouter.js"
 import profileRouter from"./routers/profileRouter.js"
-
 import jwt, { decode } from "jsonwebtoken";
 import dotenv from "dotenv"
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// For ES modules, you also need to define __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 dotenv.config()
 
 
@@ -72,6 +77,7 @@ app.use("/api/courses", courseRouter)
 app.use("/api/students", studentRouter)
 app.use("/api/enrollments", enrollmentRouter)
 app.use('/api/profile', profileRouter);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 
 
