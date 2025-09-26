@@ -11,6 +11,11 @@ const enrollmentSchema = new mongoose.Schema({
         required: true,
         trim: true
     },
+    studentEmail: {
+        type: String,
+        required: true,
+        trim: true
+    },
     enrollmentStatus: {
         type: String,
         required: true,

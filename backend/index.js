@@ -13,6 +13,8 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs"; // NEW: For file system operations
+// import multer from "multer"; // NOTE: Multer is only used in courseRouter
 
 // For ES modules, define __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -30,8 +32,23 @@ app.use(
   })
 );
 
-// Middleware for parsing JSON
+// Middleware for parsing JSON (will be bypassed for Multer routes)
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true })); // For parsing application/x-www-form-urlencoded
+
+// NEW: Setup directories and serve static files
+const uploadDirs = [path.join(__dirname, 'uploads'), path.join(__dirname, 'uploads/courses'), path.join(__dirname, 'uploads/profiles')];
+
+// Ensure upload directories exist
+uploadDirs.forEach(dir => {
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        console.log(`Created upload directory: ${dir}`);
+    }
+});
+
+// Serve static files (images) from the 'uploads' directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // <--- NEW: Static route for serving images
 
 // JWT Authentication Middleware
 app.use((req, res, next) => {
@@ -72,11 +89,7 @@ app.use("/api/enrollments", enrollmentRouter);
 app.use("/api/profile", profileRouter);
 app.use("/api/chat", chatRoutes);
 
-// Static folder for uploads
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
-// Start Server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server started on port ${PORT}`);
+const port = process.env.PORT || 5000;
+app.listen(port, () => {
+  console.log(`🚀 Server is running on port ${port}`);
 });
