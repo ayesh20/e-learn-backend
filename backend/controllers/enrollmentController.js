@@ -4,12 +4,12 @@ import Course from "../models/course.js";
 import dotenv from "dotenv";
 dotenv.config();
 
-// Create a new enrollment
+// Create a new enrollment - FIXED VERSION
 export async function createEnrollment(req, res) {
     try {
         console.log('Creating enrollment with data:', req.body);
 
-        // Validate required fields
+        // FIXED: Only validate courseName and studentName (removed strict validation)
         if (!req.body.courseName || !req.body.studentName) {
             return res.status(400).json({
                 message: "Missing required fields: courseName and studentName are required"
@@ -28,16 +28,19 @@ export async function createEnrollment(req, res) {
             });
         }
 
-        // Prepare enrollment data
+        // FIXED: Prepare enrollment data - include studentEmail!
         const enrollmentData = {
             courseName: req.body.courseName.trim(),
             studentName: req.body.studentName.trim(),
+            studentEmail: req.body.studentEmail || 'no-email@example.com', // FIXED: Added this line!
             enrollmentStatus: req.body.enrollmentStatus || "ENROLLED",
             grade: req.body.grade || "Not Given",
             enrollmentDate: req.body.enrollmentDate || new Date(),
             completionDate: req.body.completionDate || null,
             progress: req.body.progress || 0
         };
+
+        console.log('Processed enrollment data:', enrollmentData);
 
         // Create enrollment
         const enrollment = new Enrollment(enrollmentData);
@@ -52,6 +55,7 @@ export async function createEnrollment(req, res) {
 
     } catch (error) {
         console.error('Error creating enrollment:', error);
+        console.error('Error details:', error.message);
         
         if (error.code === 11000) {
             return res.status(400).json({
@@ -61,9 +65,11 @@ export async function createEnrollment(req, res) {
         
         if (error.name === 'ValidationError') {
             const validationErrors = Object.values(error.errors).map(err => err.message);
+            console.error('Validation errors:', validationErrors);
             return res.status(400).json({
                 message: "Validation error",
-                errors: validationErrors
+                errors: validationErrors,
+                receivedData: req.body // Added for debugging
             });
         }
         
@@ -79,7 +85,6 @@ export async function getAllEnrollments(req, res) {
     try {
         const { page = 1, limit = 10, enrollmentStatus, courseName, studentName } = req.query;
         
-        // Build filter object
         const filter = {};
         if (enrollmentStatus) filter.enrollmentStatus = enrollmentStatus;
         if (courseName) filter.courseName = { $regex: courseName, $options: 'i' };
@@ -187,12 +192,10 @@ export async function updateEnrollment(req, res) {
         const enrollmentId = req.params.enrollmentId;
         const updateData = { ...req.body };
         
-        // Remove fields that shouldn't be updated directly
         delete updateData._id;
         delete updateData.createdAt;
-        delete updateData.enrollmentDate; // Enrollment date shouldn't be changed
+        delete updateData.enrollmentDate;
         
-        // Add updated timestamp
         updateData.updatedAt = new Date();
         
         const updatedEnrollment = await Enrollment.findByIdAndUpdate(
@@ -267,7 +270,6 @@ export async function updateEnrollmentStatus(req, res) {
             updatedAt: new Date()
         };
         
-        // If status is completed, set completion date
         if (enrollmentStatus === 'COMPLETED') {
             updateData.completionDate = new Date();
             updateData.progress = 100;
@@ -343,7 +345,6 @@ export async function updateEnrollmentProgress(req, res) {
             updatedAt: new Date()
         };
         
-        // If progress is 100%, mark as completed
         if (progress === 100) {
             updateData.enrollmentStatus = 'COMPLETED';
             updateData.completionDate = new Date();
@@ -376,7 +377,6 @@ export async function getEnrollmentStats(req, res) {
         const completedEnrollments = await Enrollment.countDocuments({ enrollmentStatus: 'COMPLETED' });
         const droppedEnrollments = await Enrollment.countDocuments({ enrollmentStatus: 'DROPPED' });
         
-        // Get enrollment status distribution
         const statusDistribution = await Enrollment.aggregate([
             {
                 $group: {
@@ -386,7 +386,6 @@ export async function getEnrollmentStats(req, res) {
             }
         ]);
         
-        // Get recent enrollments
         const recentEnrollments = await Enrollment.find()
             .sort({ enrollmentDate: -1 })
             .limit(5);
