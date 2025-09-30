@@ -11,6 +11,43 @@ export async function createCourse(req, res) {
         console.log('Creating course with data:', req.body);
         console.log('File data:', req.file);
 
+        // Parse JSON strings from FormData if they exist
+        let content = req.body.content;
+        let quizzes = req.body.quizzes;
+        let settings = req.body.settings;
+        
+        // Check if content is a string and parse it
+        if (typeof content === 'string') {
+            try {
+                content = JSON.parse(content);
+                console.log('Parsed content:', content.length, 'pages');
+            } catch (e) {
+                console.error('Failed to parse content:', e);
+                content = [];
+            }
+        }
+        
+        // Check if quizzes is a string and parse it
+        if (typeof quizzes === 'string') {
+            try {
+                quizzes = JSON.parse(quizzes);
+                console.log('Parsed quizzes:', quizzes.length, 'quizzes');
+            } catch (e) {
+                console.error('Failed to parse quizzes:', e);
+                quizzes = [];
+            }
+        }
+
+        // Parse settings if it's a string
+        if (typeof settings === 'string') {
+            try {
+                settings = JSON.parse(settings);
+            } catch (e) {
+                console.error('Failed to parse settings:', e);
+                settings = {};
+            }
+        }
+
         // Validate required fields
         if (!req.body.title || !req.body.description || !req.body.instructorId) {
             return res.status(400).json({
@@ -21,14 +58,12 @@ export async function createCourse(req, res) {
         // Handle thumbnail upload
         let thumbnailPath = null;
         if (req.file) {
-            // Store the relative path to the uploaded file
             thumbnailPath = `/uploads/courses/${req.file.filename}`;
             console.log('Thumbnail uploaded:', thumbnailPath);
         }
 
         // Prepare comprehensive course data
         const courseData = {
-            // Basic course information
             title: req.body.title.trim(),
             description: req.body.description.trim(),
             instructorId: req.body.instructorId,
@@ -41,27 +76,30 @@ export async function createCourse(req, res) {
             syllabus: req.body.syllabus || [],
             requirements: req.body.requirements || [],
             tags: req.body.tags || [],
-            thumbnail: thumbnailPath, // Store the image path
+            thumbnail: thumbnailPath,
             
-            // Content data from AddContent component
-            content: req.body.content || [],
+            // Use parsed arrays
+            content: content || [],
+            quizzes: quizzes || [],
             
-            // Quiz data from QuizSection component
-            quizzes: req.body.quizzes || [],
-            
-            // Additional resources and assignments
             resources: req.body.resources || [],
             assignments: req.body.assignments || [],
             
-            // Course settings
-            settings: {
-                allowDiscussions: req.body.settings?.allowDiscussions ?? true,
-                allowDownloads: req.body.settings?.allowDownloads ?? true,
-                certificateEnabled: req.body.settings?.certificateEnabled ?? false,
-                language: req.body.settings?.language || 'English',
-                difficulty: req.body.settings?.difficulty || 'Medium'
+            settings: settings || {
+                allowDiscussions: true,
+                allowDownloads: true,
+                certificateEnabled: false,
+                language: 'English',
+                difficulty: 'Medium'
             }
         };
+
+        console.log('Final course data before save:', {
+            title: courseData.title,
+            contentPages: courseData.content?.length,
+            quizzes: courseData.quizzes?.length,
+            hasQuestions: courseData.quizzes?.[0]?.questions?.length
+        });
 
         // Create course with all integrated data
         const course = new Course(courseData);
@@ -71,7 +109,11 @@ export async function createCourse(req, res) {
         const populatedCourse = await Course.findById(savedCourse._id)
             .populate('instructorId', 'firstName lastName email');
 
-        console.log('Course created successfully with integrated data:', savedCourse._id);
+        console.log('Course created successfully:', {
+            id: savedCourse._id,
+            contentPages: savedCourse.content?.length,
+            quizzes: savedCourse.quizzes?.length
+        });
 
         res.status(201).json({
             message: "Course created successfully",

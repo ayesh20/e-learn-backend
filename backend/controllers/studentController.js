@@ -22,7 +22,7 @@ export async function createStudent(req, res) {
         }
 
         // Validate email format
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
         if (!emailRegex.test(req.body.email)) {
             return res.status(400).json({
                 message: "Please provide a valid email address"
@@ -37,150 +37,96 @@ export async function createStudent(req, res) {
             });
         }
 
-        // Validate password length
-        if (req.body.password.length < 6) {
-            return res.status(400).json({
-                message: "Password must be at least 6 characters long"
-            });
-        }
+        // Hash the password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(req.body.password, salt);
 
-        // Hash password
-        const passwordHash = bcrypt.hashSync(req.body.password, 10);
+        // Create new student instance
+        const newStudent = new Student({
+            ...req.body,
+            email: req.body.email.toLowerCase(),
+            password: hashedPassword,
+            status: "ACTIVE"
+        });
 
-        // Generate unique student ID if not provided
-        const studentId = req.body.studentId || `STU${Date.now()}`;
+        // Save the new student
+        const savedStudent = await newStudent.save();
 
-        // Prepare student data
-        const studentData = {
-            firstName: req.body.firstName.trim(),
-            lastName: req.body.lastName.trim(),
-            email: req.body.email.toLowerCase().trim(),
-            password: passwordHash,
-            studentId: studentId,
-            phone: req.body.phone || "NOT GIVEN",
-            dateOfBirth: req.body.dateOfBirth,
-            address: req.body.address || '',
-            enrollmentDate: req.body.enrollmentDate || new Date(),
-            status: req.body.status || 'Active',
-            academicLevel: req.body.academicLevel || 'Beginner'
-        };
-
-        // Create student
-        const student = new Student(studentData);
-        const savedStudent = await student.save();
-
-        console.log('Student created successfully:', savedStudent._id);
-
-        res.status(201).json({
-            message: "Student created successfully",
-            student: {
-                id: savedStudent._id,
-                firstName: savedStudent.firstName,
-                lastName: savedStudent.lastName,
-                email: savedStudent.email,
-                studentId: savedStudent.studentId,
-                phone: savedStudent.phone,
-                status: savedStudent.status,
-                academicLevel: savedStudent.academicLevel
-            }
+        // Create a JWT token for immediate login (Optional but recommended)
+        const token = jwt.sign(
+            { id: savedStudent._id, role: 'student' },
+            process.env.JWT_SECRET,
+            { expiresIn: '1d' } // Token expires in 1 day
+        );
+        
+        // Respond with the token and student data
+        const studentResponse = savedStudent.toObject();
+        delete studentResponse.password; // Remove password from response
+        
+        res.status(201).json({ 
+            token, 
+            student: studentResponse,
+            message: "Student registered and logged in successfully" 
         });
 
     } catch (error) {
         console.error('Error creating student:', error);
-        
-        if (error.code === 11000) {
-            return res.status(400).json({
-                message: "Student with this information already exists"
-            });
-        }
-        
-        if (error.name === 'ValidationError') {
-            const validationErrors = Object.values(error.errors).map(err => err.message);
-            return res.status(400).json({
-                message: "Validation error",
-                errors: validationErrors
-            });
-        }
-        
         res.status(500).json({
-            message: "Failed to create student",
+            message: "Student registration failed",
             error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
         });
     }
 }
+
 
 // Login student
 export async function loginStudent(req, res) {
     try {
         const { email, password } = req.body;
 
-        // Validate required fields
         if (!email || !password) {
             return res.status(400).json({
                 message: "Email and password are required"
             });
         }
 
-        console.log('Login attempt for student email:', email);
-
-        // Find student
-        const student = await Student.findOne({ email: email.toLowerCase().trim() });
-        
+        // 1. Find the student
+        const student = await Student.findOne({ email: email.toLowerCase() });
         if (!student) {
-            return res.status(404).json({
-                message: "Student not found"
+            return res.status(400).json({
+                message: "Invalid credentials"
             });
         }
 
-        // Check if student is active
-        if (student.status !== 'Active') {
-            return res.status(403).json({
-                message: `Account is ${student.status}. Please contact support.`
+        // 2. Compare the plain text password with the hashed password
+        const isMatch = await bcrypt.compare(password, student.password);
+
+        if (!isMatch) {
+            return res.status(400).json({
+                message: "Invalid credentials"
             });
         }
 
-        // Check password
-        const isPasswordCorrect = bcrypt.compareSync(password, student.password);
-        
-        if (!isPasswordCorrect) {
-            return res.status(403).json({
-                message: "Incorrect password"
-            });
-        }
-
-        // Generate JWT token
+        // 3. Authentication successful - ***FIX: CREATE JWT TOKEN***
         const token = jwt.sign(
-            {
-                id: student._id,
-                email: student.email,
-                firstName: student.firstName,
-                lastName: student.lastName,
-                studentId: student.studentId,
-                role: 'student',
-                status: student.status
-            },
+            { id: student._id, role: 'student' },
             process.env.JWT_SECRET,
-            { expiresIn: '24h' }
+            { expiresIn: '1d' } // Token expires in 1 day
         );
+        
+        // 4. Prepare response (exclude password)
+        const studentResponse = student.toObject();
+        delete studentResponse.password;
 
-        console.log('Login successful for student:', student.email);
-
-        res.json({
-            token: token,
-            message: "Login successful",
-            student: {
-                id: student._id,
-                firstName: student.firstName,
-                lastName: student.lastName,
-                email: student.email,
-                studentId: student.studentId,
-                status: student.status,
-                academicLevel: student.academicLevel
-            }
+        // 5. Send token and student data to the client
+        res.json({ 
+            token, 
+            student: studentResponse,
+            message: "Login successful" 
         });
-
+        
     } catch (error) {
-        console.error('Error during student login:', error);
+        console.error('Error logging in student:', error);
         res.status(500).json({
             message: "Login failed",
             error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
@@ -188,46 +134,14 @@ export async function loginStudent(req, res) {
     }
 }
 
+
 // Get all students
 export async function getAllStudents(req, res) {
     try {
-        const { page = 1, limit = 10, status, academicLevel, search } = req.query;
-        
-        // Build filter object
-        const filter = {};
-        if (status) filter.status = status;
-        if (academicLevel) filter.academicLevel = academicLevel;
-        if (search) {
-            filter.$or = [
-                { firstName: { $regex: search, $options: 'i' } },
-                { lastName: { $regex: search, $options: 'i' } },
-                { email: { $regex: search, $options: 'i' } },
-                { studentId: { $regex: search, $options: 'i' } }
-            ];
-        }
-
-        const skip = (page - 1) * limit;
-        
-        const students = await Student.find(filter, '-password')
-            .skip(skip)
-            .limit(parseInt(limit))
-            .sort({ enrollmentDate: -1 });
-
-        const totalStudents = await Student.countDocuments(filter);
-        const totalPages = Math.ceil(totalStudents / limit);
-        
-        res.json({
-            students,
-            pagination: {
-                currentPage: parseInt(page),
-                totalPages,
-                totalStudents,
-                hasNext: page < totalPages,
-                hasPrev: page > 1
-            }
-        });
+        const students = await Student.find({}, '-password').sort({ createdAt: -1 });
+        res.json({ students });
     } catch (error) {
-        console.error('Error fetching students:', error);
+        console.error('Error getting all students:', error);
         res.status(500).json({
             message: "Failed to fetch students",
             error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
@@ -238,17 +152,15 @@ export async function getAllStudents(req, res) {
 // Get student by ID
 export async function getStudentById(req, res) {
     try {
-        const studentId = req.params.studentId;
-        
-        const student = await Student.findById(studentId, '-password');
-        
+        const student = await Student.findById(req.params.studentId, '-password');
         if (!student) {
-            return res.status(404).json({ message: "Student not found" });
+            return res.status(404).json({
+                message: "Student not found"
+            });
         }
-        
-        res.json(student);
+        res.json({ student });
     } catch (error) {
-        console.error('Error fetching student:', error);
+        console.error('Error getting student by ID:', error);
         res.status(500).json({
             message: "Failed to fetch student",
             error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'

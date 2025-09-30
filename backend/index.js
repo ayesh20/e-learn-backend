@@ -9,6 +9,7 @@ import studentRouter from "./routers/studentRouter.js";
 import enrollmentRouter from "./routers/enrollmentRouter.js";
 import profileRouter from "./routers/profileRouter.js";
 import chatRoutes from "./routers/chatRoutes.js";
+import contactRouter from "./routers/contactRouter.js";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import path from "path";
@@ -88,6 +89,7 @@ app.use("/api/students", studentRouter);
 app.use("/api/enrollments", enrollmentRouter);
 app.use("/api/profile", profileRouter);
 app.use("/api/chat", chatRoutes);
+app.use("/api/contact", contactRouter );
 
 const port = process.env.PORT || 5000;
 app.listen(port, () => {
