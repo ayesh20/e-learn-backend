@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
+import multer from "multer";
 
 // Routers
 import userRouter from "./routers/userRouter.js";
@@ -16,12 +17,9 @@ import studentRouter from "./routers/studentRouter.js";
 import enrollmentRouter from "./routers/enrollmentRouter.js";
 import profileRouter from "./routers/profileRouter.js";
 import chatRoutes from "./routers/chatRoutes.js";
-import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
-import fs from "fs"; // NEW: For file system operations
-// import multer from "multer"; // NOTE: Multer is only used in courseRouter
+import contactRouter from "./routers/contactRouter.js";
+import passwordRoutes from "./routers/passwordRoutes.js";
+
 
 // For ES modules, define __dirname
 const __filename = fileURLToPath(import.meta.url);
